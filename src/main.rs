@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::collections::HashMap;
 use std::io::{Error, ErrorKind};
 use std::str::FromStr;
 
@@ -14,7 +15,7 @@ struct Question {
     content: String,
     tags: Option<Vec<String>>,
 }
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone, PartialEq, Eq, Hash)]
 struct QuestionId(String);
 
 impl Question {
@@ -36,6 +37,33 @@ impl FromStr for QuestionId {
             false => Ok(QuestionId(id.to_string())),
             true => Err(Error::new(ErrorKind::InvalidInput, "No id provided")),
         }
+    }
+}
+
+struct Store {
+    questions: HashMap<QuestionId, Question>,
+}
+impl Store {
+    fn new() -> Self {
+        Store {
+            questions: HashMap::new(),
+        }
+    }
+
+    fn init(self) -> Self {
+        let question = Question::new(
+            QuestionId::from_str("1").expect("Id not set"),
+            "How?".to_string(),
+            "Please help!".to_string(),
+            Some(vec!["general".to_string()]),
+        );
+        self.add_question(question)
+    }
+
+    fn add_question(mut self, question: Question) -> Self {
+        self.questions.insert(question.id.clone(), question);
+
+        self
     }
 }
 
