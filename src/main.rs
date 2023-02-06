@@ -73,29 +73,51 @@ async fn get_questions(
     params: HashMap<String, String>,
     store: Store,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let mut start = 0;
-    /*match params.get("start") {
-        Some(start) => println!("{}", start),
-        None => println!("No start value"),
+    if !params.is_empty() {
+        let pagination = extract_pagination(params)?; // `?` allows return of either the Pagination or custom Error.
+        let res: Vec<Question> = store.questions.values().cloned().collect();
+        let res = &res[pagination.start..pagination.end]; //TODO: Need to conduct validation on the value to avoid panic
+        Ok(warp::reply::json(&res))
+    } else {
+        let res: Vec<Question> = store.questions.values().cloned().collect();
+        Ok(warp::reply::json(&res))
     }
-    // Shorthand way to use match below*/
-    if let Some(n) = params.get("start") {
-        start = n.parse::<usize>().expect("Could not parse start");
-    }
-
-    println!("{}", start);
-
-    let res: Vec<Question> = store.questions.values().cloned().collect();
-
-    Ok(warp::reply::json(&res))
 }
 
+// Pagination enables unmarshalling pagination query params.
 #[derive(Debug)]
-struct InvalidId;
-impl Reject for InvalidId {}
+struct Pagination {
+    start: usize,
+    end: usize,
+}
 
+fn extract_pagination(params: HashMap<String, String>) -> Result<Pagination, Error> {
+    if params.contains_key("start") && params.contains_key("end") {
+        return Ok(Pagination {
+            start: params
+                .get("start")
+                .unwrap() // We can use the unsafe unwrap() because we already checked if the var was there.
+                .parse::<usize>() // Parse the &str to a usize int.
+                .map_err(Error::ParseError)?,
+            end: params
+                .get("end")
+                .unwrap()
+                .parse::<usize>()
+                .map_err(Error::ParseError)?,
+        });
+    }
+
+    Err(Error::MissingParameters)
+}
+
+// return_error holds a set of default http errors for use by the server.
 async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
-    if let Some(error) = r.find::<CorsForbidden>() {
+    if let Some(error) = r.find::<Error>() {
+        Ok(warp::reply::with_status(
+            error.to_string(),
+            StatusCode::RANGE_NOT_SATISFIABLE,
+        ))
+    } else if let Some(error) = r.find::<CorsForbidden>() {
         Ok(warp::reply::with_status(
             error.to_string(),
             StatusCode::FORBIDDEN,
@@ -105,5 +127,27 @@ async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
             "Route not found".to_string(),
             StatusCode::NOT_FOUND,
         ))
+    }
+}
+
+#[derive(Debug)]
+struct InvalidId;
+impl Reject for InvalidId {}
+
+#[derive(Debug)]
+enum Error {
+    ParseError(std::num::ParseIntError),
+    MissingParameters,
+}
+impl Reject for Error {}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            Error::ParseError(ref err) => {
+                write!(f, "Cannot parse parameter: {}", err)
+            }
+            Error::MissingParameters => write!(f, "Missing parameter"),
+        }
     }
 }
