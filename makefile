@@ -4,6 +4,8 @@
 #	-H "Access-Control-Request-Method: PUT" \
 #	-H "Access-Control-Request-Headers: content-type" \
 #	-H "Origin: https://not-origin.io" –verbose
+#
+#	curl http://localhost:3030/questions\?start\=1\&end\=400
 
 docs:
 	rustup doc --std

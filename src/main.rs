@@ -27,17 +27,6 @@ impl Question {
     }
 }
 
-/*impl FromStr for QuestionId {
-    type Err = std::io::Error;
-
-    fn from_str(id: &str) -> Result<Self, Self::Err> {
-        match id.is_empty() {
-            false => Ok(QuestionId(id.to_string())),
-            true => Err(Error::new(ErrorKind::InvalidInput, "No id provided")),
-        }
-    }
-}*/
-
 #[derive(Clone)]
 struct Store {
     questions: HashMap<QuestionId, Question>,
@@ -68,6 +57,7 @@ async fn main() {
     let get_items = warp::get()
         .and(warp::path("questions"))
         .and(warp::path::end()) // dont listen for /questions/somethingElse
+        .and(warp::query()) // how to get query params.
         .and(store_filter)
         .and_then(get_questions)
         .recover(return_error);
@@ -79,18 +69,22 @@ async fn main() {
 
 //get_questions defines a basic handler. It implements the warp
 // handler signature, returning a success/failure case.
-async fn get_questions(store: Store) -> Result<impl warp::Reply, warp::Rejection> {
-    // let question = Question::new(
-    //     QuestionId::from_str("1").expect("No id provided"),
-    //     "First Question".to_string(),
-    //     "Content of question".to_string(),
-    //     Some(vec!["faq".to_string()]),
-    // );
-    //
-    // match question.id.0.parse::<i32>() {
-    //     Err(_) => Err(warp::reject::custom(InvalidId)),
-    //     Ok(_) => Ok(warp::reply::json(&question)),
-    // }
+async fn get_questions(
+    params: HashMap<String, String>,
+    store: Store,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let mut start = 0;
+    /*match params.get("start") {
+        Some(start) => println!("{}", start),
+        None => println!("No start value"),
+    }
+    // Shorthand way to use match below*/
+    if let Some(n) = params.get("start") {
+        start = n.parse::<usize>().expect("Could not parse start");
+    }
+
+    println!("{}", start);
+
     let res: Vec<Question> = store.questions.values().cloned().collect();
 
     Ok(warp::reply::json(&res))
@@ -106,11 +100,6 @@ async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
             error.to_string(),
             StatusCode::FORBIDDEN,
         ))
-    /*    } else if let Some(InvalidId) = r.find() {
-    Ok(warp::reply::with_status(
-        "No valid ID presented".to_string(),
-        StatusCode::UNPROCESSABLE_ENTITY,
-    ))*/
     } else {
         Ok(warp::reply::with_status(
             "Route not found".to_string(),
