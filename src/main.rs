@@ -4,8 +4,8 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use warp::{
-    filters::cors::CorsForbidden, http::Method, http::StatusCode, reject::Reject, Filter,
-    Rejection, Reply,
+    filters::body::BodyDeserializeError, filters::cors::CorsForbidden, http::Method,
+    http::StatusCode, reject::Reject, Filter, Rejection, Reply,
 };
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
@@ -70,8 +70,27 @@ async fn main() {
         .and(warp::body::json())
         .and_then(add_question);
 
-    let routes = get_questions.or(add_question).with(cors);
-    // .recover(return_error); //  WHY ISN'T THIS WORKING?
+    let update_question = warp::put()
+        .and(warp::path("questions"))
+        .and(warp::path::param::<String>())
+        .and(warp::path::end())
+        .and(store_filter.clone())
+        .and(warp::body::json())
+        .and_then(update_question);
+
+    let delete_question = warp::delete()
+        .and(warp::path("questions"))
+        .and(warp::path::param::<String>())
+        .and(warp::path::end())
+        .and(store_filter.clone())
+        .and_then(delete_question);
+
+    let routes = get_questions
+        .or(add_question)
+        .or(update_question)
+        .or(delete_question)
+        .with(cors)
+        .recover(return_error);
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 }
@@ -93,6 +112,7 @@ async fn get_questions(
     }
 }
 
+// add_question inputs a new question into the store.
 async fn add_question(
     store: Store,
     question: Question,
@@ -106,6 +126,28 @@ async fn add_question(
     Ok(warp::reply::with_status("Question added", StatusCode::OK))
 }
 
+async fn update_question(
+    id: String,
+    store: Store,
+    question: Question,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    match store.questions.write().await.get_mut(&QuestionId(id)) {
+        // get the mutable reference so we can modify.
+        Some(q) => *q = question,
+        None => return Err(warp::reject::custom(Error::QuestionNotFound)),
+    }
+
+    Ok(warp::reply::with_status("Question updated", StatusCode::OK))
+}
+
+async fn delete_question(id: String, store: Store) -> Result<impl warp::Reply, warp::Rejection> {
+    match store.questions.write().await.remove(&QuestionId(id)) {
+        Some(_) => return Ok(warp::reply::with_status("Question deleted", StatusCode::OK)),
+
+        None => return Err(warp::reject::custom(Error::QuestionNotFound)),
+    }
+}
+
 // Pagination enables unmarshalling pagination query params.
 #[derive(Debug)]
 struct Pagination {
@@ -113,6 +155,8 @@ struct Pagination {
     end: usize,
 }
 
+// extract_pagination enforces the use of 'start' and 'end' pagination and
+// extracts their values.
 fn extract_pagination(params: HashMap<String, String>) -> Result<Pagination, Error> {
     if params.contains_key("start") && params.contains_key("end") {
         return Ok(Pagination {
@@ -144,6 +188,11 @@ async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
             error.to_string(),
             StatusCode::FORBIDDEN,
         ))
+    } else if let Some(error) = r.find::<BodyDeserializeError>() {
+        Ok(warp::reply::with_status(
+            error.to_string(),
+            StatusCode::UNPROCESSABLE_ENTITY,
+        ))
     } else {
         Ok(warp::reply::with_status(
             "Route not found".to_string(),
@@ -160,6 +209,7 @@ impl Reject for InvalidId {}
 enum Error {
     ParseError(std::num::ParseIntError),
     MissingParameters,
+    QuestionNotFound,
 }
 impl Reject for Error {}
 
@@ -170,6 +220,7 @@ impl std::fmt::Display for Error {
                 write!(f, "Cannot parse parameter: {}", err)
             }
             Error::MissingParameters => write!(f, "Missing parameter"),
+            Error::QuestionNotFound => write!(f, "Question not found"),
         }
     }
 }

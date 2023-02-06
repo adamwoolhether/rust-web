@@ -6,6 +6,22 @@
 #	-H "Origin: https://not-origin.io" –verbose
 #
 #	curl http://localhost:3030/questions\?start\=1\&end\=400
+#
+#   Invalid body:
+#curl --location --request POST 'localhost:3030/questions' \
+#      --header 'Content-Type: application/json' \
+#      --data-raw '{
+#      "id": "5",
+#      "title": "NEW TITLE"
+#}'
+#
+#curl --location --request PUT 'localhost:3030/questions' \
+#        --header 'Content-Type: application/json' \
+#        --data-raw '{
+#            "id": 1,
+#            "title": "NEW TITLE",
+#            "content": "OLD CONTENT"
+#        }'
 
 docs:
 	rustup doc --std
