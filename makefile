@@ -1,3 +1,9 @@
+# Install Clippy
+# https://rust-lang.github.io/rust-clippy/master/index.html
+#
+# rustup component add clippy
+# rustup component add rustfmt
+
 # https://github.com/Rust-Web-Development/code
 # Cors Req
 #
@@ -30,6 +36,10 @@ docs:
 # Generate docs and open in browser.
 docs-open:
 	cargo doc --open
+
+lint:
+	cargo clean
+	cargo clippy
 
 curl:
 	curl localhost:3030/questions
