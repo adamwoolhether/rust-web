@@ -41,6 +41,11 @@ lint:
 	cargo clean
 	cargo clippy
 
+# Logging levels in env_logger are determined by RUST_LOG env var.
+run:
+	RUST_LOG=info cargo run
+run-verbose:
+	RUST_LOG=debug cargo run
 curl:
 	curl localhost:3030/questions
 cors:
