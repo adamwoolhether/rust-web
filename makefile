@@ -27,7 +27,8 @@
 docs:
 	rustup doc --std
 
-docs-project:
+# Generate docs and open in browser.
+docs-open:
 	cargo doc --open
 
 curl:
