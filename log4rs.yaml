@@ -4,11 +4,13 @@ refresh_rate: 30 seconds
 appenders:
   stdout:
     kind: console
+    encoder:
+      kind: json
   file:
     kind: file
     path: "stderr.log"
     encoder:
-      pattern: "{d} - {m}{n}"
+      kind: json
 # Set log level adn combination of appenders to log to.
 root:
   level: info

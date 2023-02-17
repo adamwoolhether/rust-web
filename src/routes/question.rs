@@ -4,20 +4,28 @@ use crate::types::pagination::extract_pagination;
 use crate::types::question::{Question, QuestionId};
 use handle_errors::Error;
 use std::collections::HashMap;
+use tracing::{info, instrument};
 use warp::http::StatusCode;
 
 //get_questions defines a basic handler. It implements the warp
 // handler signature, returning a success/failure case.
+#[instrument]
 pub async fn get_questions(
     params: HashMap<String, String>,
     store: store::Store,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    // log::info!("Start querying questions");
+    info!("querying questions");
     if !params.is_empty() {
         let pagination = extract_pagination(params)?; // `?` allows return of either the Pagination or custom Error.
+                                                      // log::info!("Pagination set {:?}", &pagination);
+        info!(pagination = true);
         let res: Vec<Question> = store.questions.read().await.values().cloned().collect();
         let res = &res[pagination.start..pagination.end]; //TODO: Need to conduct validation on the value to avoid panic
         Ok(warp::reply::json(&res))
     } else {
+        // log::info!("No pagination found");
+        info!(pagination = false);
         let res: Vec<Question> = store.questions.read().await.values().cloned().collect();
         Ok(warp::reply::json(&res))
     }
