@@ -1,0 +1,17 @@
+# When to change config during prod without restart.
+refresh_rate: 30 seconds
+# Set where to output logs to.
+appenders:
+  stdout:
+    kind: console
+  file:
+    kind: file
+    path: "stderr.log"
+    encoder:
+      pattern: "{d} - {m}{n}"
+# Set log level adn combination of appenders to log to.
+root:
+  level: info
+  appenders:
+    - stdout
+    - file
