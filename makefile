@@ -49,6 +49,9 @@ run:
 run-verbose:
 	RUST_LOG=debug cargo run
 
+db:
+	scripts/init_db.sh
+
 debug:
 	cargo build
 	rust-gdb target/debug/rust-web
