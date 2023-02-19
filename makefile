@@ -29,7 +29,9 @@
 #            "title": "NEW TITLE",
 #            "content": "OLD CONTENT"
 #        }'
-
+# Debugging
+# NOTE: gdb isn't supported on ARM
+# brew install gdb
 docs:
 	rustup doc --std
 
@@ -46,6 +48,11 @@ run:
 	RUST_LOG=info cargo run
 run-verbose:
 	RUST_LOG=debug cargo run
+
+debug:
+	cargo build
+	rust-gdb target/debug/rust-web
+
 curl:
 	curl localhost:3030/questions
 cors:
